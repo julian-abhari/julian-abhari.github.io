@@ -1,26 +1,29 @@
 package com.Julian.game;
 
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import org.teavm.jso.dom.events.EventListener;
+import org.teavm.jso.dom.events.KeyboardEvent;
+import org.teavm.jso.dom.html.HTMLDocument;
 
-public class InputHandler implements KeyListener {
+public class InputHandler {
 
-	public InputHandler(Game game) {
-		game.addKeyListener(this);
+	public InputHandler() {
+		HTMLDocument document = HTMLDocument.current();
+		document.addEventListener("keydown", (EventListener<KeyboardEvent>) this::onKeyDown);
+		document.addEventListener("keyup", (EventListener<KeyboardEvent>) this::onKeyUp);
 	}
-	
+
 	public class Key {
 		public boolean pressed = false;
-		
+
 		public boolean isPressed() {
 			return pressed;
 		}
-		
+
 		public void toggle(boolean isPressed) {
 			pressed = isPressed;
 		}
 	}
-	
+
 	//-----Movement Keys-----
 	public Key up = new Key();
 	public Key down = new Key();
@@ -28,40 +31,43 @@ public class InputHandler implements KeyListener {
 	public Key right = new Key();
 	// Interact with item or self
 	public Key D = new Key();
-	
-	@Override
-	public void keyPressed(KeyEvent e) {
-		toggleKey(e.getKeyCode(), true);
+
+	private void onKeyDown(KeyboardEvent event) {
+		if (toggleKey(event.getKey(), true)) {
+			event.preventDefault();
+		}
 	}
 
-	@Override
-	public void keyReleased(KeyEvent e) {
-		toggleKey(e.getKeyCode(), false);
+	private void onKeyUp(KeyboardEvent event) {
+		if (toggleKey(event.getKey(), false)) {
+			event.preventDefault();
+		}
 	}
-	
-	@Override
-	public void keyTyped(KeyEvent e) {
-		
-	}
-	
-	public void toggleKey(int keyCode, boolean isPressed) {
+
+	public boolean toggleKey(String key, boolean isPressed) {
 		//-----Movement Keys-----
-		if (keyCode == KeyEvent.VK_UP) {
-			up.toggle(isPressed); 
+		if (key.equals("ArrowUp")) {
+			up.toggle(isPressed);
+			return true;
 		}
-		if (keyCode == KeyEvent.VK_DOWN) { 
-			down.toggle(isPressed); 
+		if (key.equals("ArrowDown")) {
+			down.toggle(isPressed);
+			return true;
 		}
-		if (keyCode == KeyEvent.VK_LEFT) {
-			left.toggle(isPressed); 
+		if (key.equals("ArrowLeft")) {
+			left.toggle(isPressed);
+			return true;
 		}
-		if (keyCode == KeyEvent.VK_RIGHT) {
+		if (key.equals("ArrowRight")) {
 			right.toggle(isPressed);
+			return true;
 		}
 		// Interact with item or self Key
-		if (keyCode == KeyEvent.VK_D) {
+		if (key.equalsIgnoreCase("d")) {
 			D.toggle(isPressed);
+			return true;
 		}
+		return false;
 	}
-	
+
 }

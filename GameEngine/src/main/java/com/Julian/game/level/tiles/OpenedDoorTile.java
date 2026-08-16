@@ -11,7 +11,7 @@ public class OpenedDoorTile extends BasicTriggerTile {
 	}
 	
 	public void doAction() {
-		Game.game.level = new Level("/Levels/cage_test_2.png");
+		Game.game.level = new Level("/game/Levels/cage_test_2.png");
 		Game.game.player = new Player(Game.game.level, (Game.game.level.width/2)*8, (Game.game.level.height/2)*8, Game.input, Game.game.player.getUsername());
 		Game.game.level.addEntity(Game.game.player);
 	}

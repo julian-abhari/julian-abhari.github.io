@@ -1,127 +1,113 @@
 package com.Julian.game.web;
 
+import org.teavm.jso.JSProperty;
 import org.teavm.jso.browser.AnimationFrameCallback;
 import org.teavm.jso.browser.Window;
 import org.teavm.jso.canvas.CanvasRenderingContext2D;
-import org.teavm.jso.dom.events.EventListener;
-import org.teavm.jso.dom.events.KeyboardEvent;
+import org.teavm.jso.canvas.ImageData;
 import org.teavm.jso.dom.html.HTMLCanvasElement;
 import org.teavm.jso.dom.html.HTMLDocument;
+import org.teavm.jso.typedarrays.Uint8ClampedArray;
+
+import com.Julian.game.Game;
 
 /**
- * Minimal TeaVM wasmGC proof-of-concept.
+ * Real web bootstrap/entry point for the ported game engine.
  *
- * This is intentionally NOT part of the real game engine port. It exists only to
- * prove that the TeaVM -> WebAssembly (GC backend) toolchain works end to end:
- * compiles, loads in a browser runtime, can grab a &lt;canvas&gt; via JSO, render
- * to it, and read keyboard input, all driven by requestAnimationFrame.
- *
- * Do not add real game logic here. See com.Julian.game.* for the desktop engine
- * that will eventually be ported.
+ * Responsibilities:
+ * - Preload the game's PNG assets (via WebAssets) before anything else touches them
+ *   (SpriteSheet/Level read them synchronously from WebAssets' cache).
+ * - Grab the visible on-page &lt;canvas id="game-canvas"&gt; (wired up by
+ *   src/components/GameCanvas.tsx on the Next.js side, 640x480) and create a second,
+ *   offscreen low-res (Game.WIDTH x Game.HEIGHT) canvas used as a cheap 1:1 pixel
+ *   blit target for Game's frame buffer.
+ * - Drive Game.tick()/Game.render() from requestAnimationFrame, then upscale the
+ *   low-res buffer onto the visible canvas each frame (nearest-neighbor, to match
+ *   the crisp pixelated look the desktop AWT version got for free).
  */
 public final class WebMain {
 
-    private static final int SQUARE_SIZE = 20;
-    private static final int SPEED = 3;
+	/**
+	 * TeaVM's JSO CanvasRenderingContext2D interface (0.15.0) doesn't expose
+	 * imageSmoothingEnabled, so it's added here as a small overlay-type extension
+	 * rather than reaching for a raw @JSBody snippet.
+	 */
+	private interface SmoothingContext2D extends CanvasRenderingContext2D {
+		@JSProperty
+		void setImageSmoothingEnabled(boolean value);
+	}
 
-    private static boolean upHeld;
-    private static boolean downHeld;
-    private static boolean leftHeld;
-    private static boolean rightHeld;
+	private static final String[] ASSET_PATHS = {
+			"/game/SpriteSheet.png",
+			"/game/Levels/water_test.png",
+			"/game/Levels/cage_test_2.png",
+			"/game/Levels/cage_test_level.png",
+	};
 
-    private static double x;
-    private static double y;
+	private static CanvasRenderingContext2D visibleContext;
+	private static CanvasRenderingContext2D offscreenContext;
+	private static ImageData frameImageData;
+	private static Uint8ClampedArray frameData;
 
-    private static CanvasRenderingContext2D context;
-    private static int canvasWidth;
-    private static int canvasHeight;
+	private static AnimationFrameCallback frameCallback;
 
-    private static AnimationFrameCallback frameCallback;
+	private WebMain() {
+	}
 
-    private WebMain() {
-    }
+	public static void main(String[] args) {
+		WebAssets.preload(ASSET_PATHS, WebMain::start);
+	}
 
-    public static void main(String[] args) {
-        HTMLDocument document = HTMLDocument.current();
+	private static void start() {
+		HTMLDocument document = HTMLDocument.current();
 
-        HTMLCanvasElement canvas = (HTMLCanvasElement) document.getElementById("game-canvas");
-        context = (CanvasRenderingContext2D) canvas.getContext("2d");
+		HTMLCanvasElement visibleCanvas = (HTMLCanvasElement) document.getElementById("game-canvas");
+		visibleContext = (CanvasRenderingContext2D) visibleCanvas.getContext("2d");
+		// Nearest-neighbor scaling, so the low-res buffer stays crisp/pixelated when
+		// upscaled instead of coming out blurry (AWT's default drawImage scaling gave
+		// us this for free on desktop; the browser canvas defaults to smoothing it).
+		((SmoothingContext2D) visibleContext).setImageSmoothingEnabled(false);
 
-        canvasWidth = canvas.getWidth();
-        canvasHeight = canvas.getHeight();
+		HTMLCanvasElement offscreenCanvas = (HTMLCanvasElement) document.createElement("canvas");
+		offscreenCanvas.setWidth(Game.WIDTH);
+		offscreenCanvas.setHeight(Game.HEIGHT);
+		offscreenContext = (CanvasRenderingContext2D) offscreenCanvas.getContext("2d");
 
-        x = (canvasWidth - SQUARE_SIZE) / 2.0;
-        y = (canvasHeight - SQUARE_SIZE) / 2.0;
+		frameImageData = new ImageData(Game.WIDTH, Game.HEIGHT);
+		frameData = frameImageData.getData();
+		// Every pixel is fully opaque.
+		for (int i = 3; i < frameData.getLength(); i += 4) {
+			frameData.set(i, 255);
+		}
 
-        document.addEventListener("keydown", (EventListener<KeyboardEvent>) WebMain::onKeyDown);
-        document.addEventListener("keyup", (EventListener<KeyboardEvent>) WebMain::onKeyUp);
+		Game game = new Game();
+		game.init();
 
-        frameCallback = WebMain::update;
-        Window.requestAnimationFrame(frameCallback);
-    }
+		frameCallback = timestamp -> {
+			game.tick();
+			game.render();
+			blit(game, offscreenCanvas, visibleCanvas);
+			Window.requestAnimationFrame(frameCallback);
+		};
+		Window.requestAnimationFrame(frameCallback);
+	}
 
-    private static void onKeyDown(KeyboardEvent event) {
-        if (setKeyState(event.getKey(), true)) {
-            event.preventDefault();
-        }
-    }
+	private static void blit(Game game, HTMLCanvasElement offscreenCanvas, HTMLCanvasElement visibleCanvas) {
+		int[] pixels = game.pixels;
+		for (int i = 0; i < pixels.length; i += 1) {
+			int p = pixels[i];
+			int r = (p >> 16) & 0xFF;
+			int g = (p >> 8) & 0xFF;
+			int b = p & 0xFF;
+			int offset = i * 4;
+			frameData.set(offset, r);
+			frameData.set(offset + 1, g);
+			frameData.set(offset + 2, b);
+			// alpha channel (offset + 3) was pre-filled to 255 and never changes.
+		}
 
-    private static void onKeyUp(KeyboardEvent event) {
-        if (setKeyState(event.getKey(), false)) {
-            event.preventDefault();
-        }
-    }
-
-    private static boolean setKeyState(String key, boolean held) {
-        switch (key) {
-            case "ArrowUp":
-                upHeld = held;
-                return true;
-            case "ArrowDown":
-                downHeld = held;
-                return true;
-            case "ArrowLeft":
-                leftHeld = held;
-                return true;
-            case "ArrowRight":
-                rightHeld = held;
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static void update(double timestamp) {
-        if (upHeld) {
-            y -= SPEED;
-        }
-        if (downHeld) {
-            y += SPEED;
-        }
-        if (leftHeld) {
-            x -= SPEED;
-        }
-        if (rightHeld) {
-            x += SPEED;
-        }
-
-        if (x < 0) {
-            x = 0;
-        }
-        if (y < 0) {
-            y = 0;
-        }
-        if (x > canvasWidth - SQUARE_SIZE) {
-            x = canvasWidth - SQUARE_SIZE;
-        }
-        if (y > canvasHeight - SQUARE_SIZE) {
-            y = canvasHeight - SQUARE_SIZE;
-        }
-
-        context.clearRect(0, 0, canvasWidth, canvasHeight);
-        context.setFillStyle("#39d353");
-        context.fillRect(x, y, SQUARE_SIZE, SQUARE_SIZE);
-
-        Window.requestAnimationFrame(frameCallback);
-    }
+		offscreenContext.putImageData(frameImageData, 0, 0);
+		visibleContext.drawImage(offscreenCanvas, 0, 0, Game.WIDTH, Game.HEIGHT, 0, 0, visibleCanvas.getWidth(),
+				visibleCanvas.getHeight());
+	}
 }

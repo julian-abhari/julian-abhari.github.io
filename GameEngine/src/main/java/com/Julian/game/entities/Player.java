@@ -1,6 +1,5 @@
 package com.Julian.game.entities;
 
-import com.Julian.game.Game;
 import com.Julian.game.InputHandler;
 import com.Julian.game.gfx.Colors;
 import com.Julian.game.gfx.Font;
@@ -8,7 +7,6 @@ import com.Julian.game.gfx.Screen;
 import com.Julian.game.level.Level;
 import com.Julian.game.level.tiles.BasicInteractiveTile;
 import com.Julian.game.level.tiles.BasicTriggerTile;
-import com.Julian.game.net.packets.Packet02Move;
 
 public class Player extends Mob {
 
@@ -64,10 +62,6 @@ public class Player extends Mob {
 		if (xDir != 0 || yDir != 0) {
 			move(xDir, yDir);
 			isMoving = true;
-			
-			Packet02Move packet = new Packet02Move(this.getUsername(), this.x, this.y, this.numSteps, this.isMoving, this.movingDir);
-			packet.writeData(Game.game.socketClient);
-			
 		} else {
 			isMoving = false;
 		}

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "engine:build": "cd GameEngine && ./gradlew buildWasmGC && mkdir -p ../public/game && cp build/generated/teavm/wasm-gc/game.wasm build/generated/teavm/wasm-gc/game.wasm-runtime.js ../public/game/",
+    "engine:build": "cd GameEngine && ./gradlew buildWasmGC && mkdir -p ../public/game/Levels && cp build/generated/teavm/wasm-gc/game.wasm build/generated/teavm/wasm-gc/game.wasm-runtime.js ../public/game/ && cp src/main/resources/SpriteSheet.png ../public/game/SpriteSheet.png && cp src/main/resources/Levels/*.png ../public/game/Levels/",
     "deploy": "gh-pages -d out --dotfiles"
   },
   "dependencies": {

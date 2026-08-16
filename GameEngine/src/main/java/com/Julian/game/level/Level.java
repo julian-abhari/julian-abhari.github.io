@@ -1,17 +1,12 @@
 package com.Julian.game.level;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.imageio.ImageIO;
-
 import com.Julian.game.entities.Entity;
-import com.Julian.game.entities.PlayerMP;
 import com.Julian.game.gfx.Screen;
 import com.Julian.game.level.tiles.Tile;
+import com.Julian.game.web.WebAssets;
 
 public class Level {
 
@@ -23,7 +18,6 @@ public class Level {
 	public int height;
 	private ArrayList<Entity> entities = new ArrayList<Entity>();
 	private String imagePath;
-	private BufferedImage image;
 
 	public Level(String imagePath) {
 		if (imagePath != null) {
@@ -38,22 +32,17 @@ public class Level {
 	}
 
 	private void loadLevelFromFile() {
-		try {
-			this.image = ImageIO.read(Level.class.getResource(this.imagePath));
-			this.width = image.getWidth();
-			this.height = image.getHeight();
-			tiles = new byte[width * height];
-			this.loadTiles();
-		} catch (IOException e) {
-			// This will catch Input Output exceptions, so if the file can't be read or has
-			// been deleted.
-			e.printStackTrace();
-		}
+		// This is looking up the already-decoded level image from WebAssets
+		// (populated via WebAssets.preload(...) before the game boots), instead of
+		// the old ImageIO.read(...)/BufferedImage.getRGB(...) desktop mechanism.
+		WebAssets.DecodedImage image = WebAssets.get(this.imagePath);
+		this.width = image.width;
+		this.height = image.height;
+		tiles = new byte[width * height];
+		this.loadTiles(image.argbPixels);
 	}
 
-	private void loadTiles() {
-		// This translates the buffered image data into actual numbers
-		int[] tileColors = this.image.getRGB(0, 0, width, height, null, 0, width);
+	private void loadTiles(int[] tileColors) {
 		for (int y = 0; y < height; y += 1) {
 			for (int x = 0; x < width; x += 1) {
 				// This is going through all the tiles and matching it's level color with the
@@ -73,19 +62,8 @@ public class Level {
 		}
 	}
 
-	public void saveLevelToFile() {
-		try {
-			// This takes the image and inserts it into a new file
-			ImageIO.write(image, "png", new File(Level.class.getResource(this.imagePath).getFile()));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	// This sets the image that was inserted into a new file with new RGB data.
 	public void alterTile(int x, int y, Tile newTile) {
 		this.tiles[x + y * width] = newTile.getId();
-		image.setRGB(x, y, newTile.getLevelImageColor());
 	}
 
 	public void generateLevel() {
@@ -170,37 +148,5 @@ public class Level {
 
 	public void addEntity(Entity entity) {
 		this.entities.add(entity);
-	}
-
-	public void removePlayerMP(String username) {
-		int index = 0;
-		for (Entity e : entities) {
-			if (e instanceof PlayerMP && ((PlayerMP) e).getUsername().equals(username)) {
-				break;
-			}
-			index += 1;
-		}
-		this.entities.remove(index);
-	}
-
-	private int getPlayerMPIndex(String username) {
-		int index = 0;
-		for (Entity e : entities) {
-			if (e instanceof PlayerMP && ((PlayerMP) e).getUsername().equals(username)) {
-				return index;
-			}
-			index += 1;
-		}
-		return index;
-	}
-
-	public void movePlayer(String username, int x, int y, int numSteps, boolean isMoving, int movingDir) {
-		int index = getPlayerMPIndex(username);
-		PlayerMP player = (PlayerMP) this.getEntities().get(index);
-		player.x = x;
-		player.y = y;
-		player.setNumSteps(numSteps);
-		player.setMoving(isMoving);
-		player.setMovingDir(movingDir);
 	}
 }
