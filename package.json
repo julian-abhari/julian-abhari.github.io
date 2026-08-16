@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "engine:build": "cd GameEngine && ./gradlew buildWasmGC && mkdir -p ../public/game && cp build/generated/teavm/wasm-gc/game.wasm build/generated/teavm/wasm-gc/game.wasm-runtime.js ../public/game/",
-    "deploy": "gh-pages -d out"
+    "deploy": "gh-pages -d out --dotfiles"
   },
   "dependencies": {
     "next": "16.3.1",
