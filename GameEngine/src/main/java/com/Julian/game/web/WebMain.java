@@ -48,6 +48,8 @@ public final class WebMain {
 	private static CanvasRenderingContext2D offscreenContext;
 	private static ImageData frameImageData;
 	private static Uint8ClampedArray frameData;
+	private static WebJoystick joystick;
+	private static boolean lastNearInteractive = false;
 
 	private static AnimationFrameCallback frameCallback;
 
@@ -83,10 +85,20 @@ public final class WebMain {
 		Game game = new Game();
 		game.init();
 
+		joystick = new WebJoystick(visibleCanvas, Game.input);
+
 		frameCallback = timestamp -> {
 			game.tick();
 			game.render();
 			blit(game, offscreenCanvas, visibleCanvas);
+			joystick.render(visibleContext);
+
+			boolean nearInteractive = game.player.isNearInteractive();
+			if (nearInteractive != lastNearInteractive) {
+				lastNearInteractive = nearInteractive;
+				WebBridge.setNearInteractive(nearInteractive);
+			}
+
 			Window.requestAnimationFrame(frameCallback);
 		};
 		Window.requestAnimationFrame(frameCallback);

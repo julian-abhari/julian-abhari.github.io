@@ -123,7 +123,7 @@ the commands above + `peaceiris/actions-gh-pages` or
 
 - [x] Scaffold Next.js app shell
 - [x] Prove the TeaVM -> WebAssembly (wasmGC) pipeline with a minimal demo
-- [ ] Port the real Java Game Engine (rendering, input, resource loading) to the browser and embed it in Next.js
+- [x] Port the real Java Game Engine (rendering, input, resource loading) to the browser and embed it in Next.js
 - [ ] Build core movement + interaction system (mobile joystick, desktop keyboard/cursor)
 - [ ] Design lab environment and exhibit-to-content mapping
 - [ ] Populate exhibits with real portfolio content (experience, education, publications, patents, awards)

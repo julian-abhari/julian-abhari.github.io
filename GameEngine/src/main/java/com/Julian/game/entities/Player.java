@@ -188,4 +188,8 @@ public class Player extends Mob {
 		return this.username;
 	}
 
+	public boolean isNearInteractive() {
+		return nearInteractive;
+	}
+
 }
