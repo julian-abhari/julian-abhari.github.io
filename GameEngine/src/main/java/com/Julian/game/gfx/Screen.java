@@ -78,4 +78,13 @@ public class Screen {
 		this.xOffset = xOffset;
 		this.yOffset = yOffset;
 	}
+
+	// Called when the browser window resizes, so the internal frame buffer can
+	// track the new viewport size instead of staying locked to whatever
+	// dimensions the Screen was originally constructed with.
+	public void resize(int width, int height) {
+		this.width = width;
+		this.height = height;
+		pixels = new int[width * height];
+	}
 }

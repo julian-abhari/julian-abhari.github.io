@@ -17,9 +17,6 @@ import com.Julian.game.level.Level;
 // loop that now owns ticking/rendering/blitting to the real <canvas>.
 public class Game {
 
-	public static final int WIDTH = 160;
-	public static final int HEIGHT = (WIDTH / 12) * 9;
-	public static final int SCALE = 4;
 	public static final String NAME = "Julian's General Game Engine";
 	public static Game game;
 
@@ -27,8 +24,11 @@ public class Game {
 
 	// This is the low-res frame buffer that render() populates each frame. The
 	// web entry point (WebMain) is responsible for pushing this onto a real
-	// HTML canvas.
-	public int[] pixels = new int[WIDTH * HEIGHT];
+	// HTML canvas. Sized to width*height, which now tracks the browser
+	// viewport (via init()/resize()) instead of a fixed constant.
+	public int[] pixels;
+	public int width;
+	public int height;
 	// This will contain information of the 4 colors of pixels within the tiles
 	public int[] colors = new int[6 * 6 * 6];
 
@@ -38,8 +38,12 @@ public class Game {
 	public Level level;
 	public Player player;
 
-	public void init() {
+	public void init(int width, int height) {
 		game = this;
+		this.width = width;
+		this.height = height;
+		this.pixels = new int[width * height];
+
 		int index = 0;
 		for (int r = 0; r < 6; r += 1) {
 			for (int g = 0; g < 6; g += 1) {
@@ -57,11 +61,20 @@ public class Game {
 			}
 		}
 
-		screen = new Screen(WIDTH, HEIGHT, new SpriteSheet("/game/SpriteSheet.png"));
+		screen = new Screen(width, height, new SpriteSheet("/game/SpriteSheet.png"));
 		input = new InputHandler();
 		level = new Level("/game/Levels/water_test.png");
 		player = new Player(level, (level.width / 2) * 8, (level.height / 2) * 8, input, null);
 		level.addEntity(player);
+	}
+
+	// Called when the browser window resizes, so more (or less) of the level
+	// becomes visible instead of the same fixed view just being stretched.
+	public void resize(int width, int height) {
+		this.width = width;
+		this.height = height;
+		this.pixels = new int[width * height];
+		screen.resize(width, height);
 	}
 
 	// This updates the game, it updates the internal variables and the logic of the
@@ -84,7 +97,7 @@ public class Game {
 			for (int x = 0; x < screen.width; x++) {
 				int ColourCode = screen.pixels[x + y * screen.width];
 				if (ColourCode < 255) {
-					pixels[x + y * WIDTH] = colors[ColourCode];
+					pixels[x + y * width] = colors[ColourCode];
 				}
 			}
 		}

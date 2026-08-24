@@ -1,5 +1,6 @@
 package com.Julian.game.web;
 
+import org.teavm.interop.Export;
 import org.teavm.jso.JSProperty;
 import org.teavm.jso.browser.AnimationFrameCallback;
 import org.teavm.jso.browser.Window;
@@ -18,14 +19,20 @@ import com.Julian.game.Game;
  * - Preload the game's PNG assets (via WebAssets) before anything else touches them
  *   (SpriteSheet/Level read them synchronously from WebAssets' cache).
  * - Grab the visible on-page &lt;canvas id="game-canvas"&gt; (wired up by
- *   src/components/GameCanvas.tsx on the Next.js side, 640x480) and create a second,
- *   offscreen low-res (Game.WIDTH x Game.HEIGHT) canvas used as a cheap 1:1 pixel
- *   blit target for Game's frame buffer.
+ *   src/components/GameCanvas.tsx on the Next.js side) and create a second,
+ *   offscreen low-res canvas used as a cheap 1:1 pixel blit target for Game's
+ *   frame buffer. The low-res resolution is chosen by the React side (based on
+ *   window size) and passed in via main()'s args, then updated at runtime
+ *   through the exported resize() method.
  * - Drive Game.tick()/Game.render() from requestAnimationFrame, then upscale the
  *   low-res buffer onto the visible canvas each frame (nearest-neighbor, to match
  *   the crisp pixelated look the desktop AWT version got for free).
  */
 public final class WebMain {
+
+	// Fallback used only if the React side ever calls main() without args.
+	private static final int DEFAULT_WIDTH = 160;
+	private static final int DEFAULT_HEIGHT = 120;
 
 	/**
 	 * TeaVM's JSO CanvasRenderingContext2D interface (0.15.0) doesn't expose
@@ -45,11 +52,14 @@ public final class WebMain {
 	};
 
 	private static CanvasRenderingContext2D visibleContext;
+	private static HTMLCanvasElement visibleCanvas;
 	private static CanvasRenderingContext2D offscreenContext;
+	private static HTMLCanvasElement offscreenCanvas;
 	private static ImageData frameImageData;
 	private static Uint8ClampedArray frameData;
 	private static WebJoystick joystick;
 	private static boolean lastNearInteractive = false;
+	private static Game game;
 
 	private static AnimationFrameCallback frameCallback;
 
@@ -57,40 +67,34 @@ public final class WebMain {
 	}
 
 	public static void main(String[] args) {
-		WebAssets.preload(ASSET_PATHS, WebMain::start);
+		int initialWidth = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_WIDTH;
+		int initialHeight = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_HEIGHT;
+		WebAssets.preload(ASSET_PATHS, () -> start(initialWidth, initialHeight));
 	}
 
-	private static void start() {
+	private static void start(int width, int height) {
 		HTMLDocument document = HTMLDocument.current();
 
-		HTMLCanvasElement visibleCanvas = (HTMLCanvasElement) document.getElementById("game-canvas");
+		visibleCanvas = (HTMLCanvasElement) document.getElementById("game-canvas");
 		visibleContext = (CanvasRenderingContext2D) visibleCanvas.getContext("2d");
 		// Nearest-neighbor scaling, so the low-res buffer stays crisp/pixelated when
 		// upscaled instead of coming out blurry (AWT's default drawImage scaling gave
 		// us this for free on desktop; the browser canvas defaults to smoothing it).
 		((SmoothingContext2D) visibleContext).setImageSmoothingEnabled(false);
 
-		HTMLCanvasElement offscreenCanvas = (HTMLCanvasElement) document.createElement("canvas");
-		offscreenCanvas.setWidth(Game.WIDTH);
-		offscreenCanvas.setHeight(Game.HEIGHT);
+		offscreenCanvas = (HTMLCanvasElement) document.createElement("canvas");
 		offscreenContext = (CanvasRenderingContext2D) offscreenCanvas.getContext("2d");
+		allocateFrameBuffer(width, height);
 
-		frameImageData = new ImageData(Game.WIDTH, Game.HEIGHT);
-		frameData = frameImageData.getData();
-		// Every pixel is fully opaque.
-		for (int i = 3; i < frameData.getLength(); i += 4) {
-			frameData.set(i, 255);
-		}
-
-		Game game = new Game();
-		game.init();
+		game = new Game();
+		game.init(width, height);
 
 		joystick = new WebJoystick(visibleCanvas, Game.input);
 
 		frameCallback = timestamp -> {
 			game.tick();
 			game.render();
-			blit(game, offscreenCanvas, visibleCanvas);
+			blit();
 			joystick.render(visibleContext);
 
 			boolean nearInteractive = game.player.isNearInteractive();
@@ -104,7 +108,32 @@ public final class WebMain {
 		Window.requestAnimationFrame(frameCallback);
 	}
 
-	private static void blit(Game game, HTMLCanvasElement offscreenCanvas, HTMLCanvasElement visibleCanvas) {
+	// Called from the React side (src/components/GameCanvas.tsx) whenever the
+	// window/canvas is resized, so the camera's internal resolution tracks the
+	// new viewport instead of staying locked to whatever size main() booted
+	// with.
+	@Export(name = "resize")
+	public static void resize(int width, int height) {
+		if (game == null) {
+			return;
+		}
+		game.resize(width, height);
+		allocateFrameBuffer(width, height);
+	}
+
+	private static void allocateFrameBuffer(int width, int height) {
+		offscreenCanvas.setWidth(width);
+		offscreenCanvas.setHeight(height);
+
+		frameImageData = new ImageData(width, height);
+		frameData = frameImageData.getData();
+		// Every pixel is fully opaque.
+		for (int i = 3; i < frameData.getLength(); i += 4) {
+			frameData.set(i, 255);
+		}
+	}
+
+	private static void blit() {
 		int[] pixels = game.pixels;
 		for (int i = 0; i < pixels.length; i += 1) {
 			int p = pixels[i];
@@ -119,7 +148,7 @@ public final class WebMain {
 		}
 
 		offscreenContext.putImageData(frameImageData, 0, 0);
-		visibleContext.drawImage(offscreenCanvas, 0, 0, Game.WIDTH, Game.HEIGHT, 0, 0, visibleCanvas.getWidth(),
-				visibleCanvas.getHeight());
+		visibleContext.drawImage(offscreenCanvas, 0, 0, offscreenCanvas.getWidth(), offscreenCanvas.getHeight(), 0, 0,
+				visibleCanvas.getWidth(), visibleCanvas.getHeight());
 	}
 }
