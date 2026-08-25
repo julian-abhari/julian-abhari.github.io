@@ -21,8 +21,8 @@ import com.Julian.game.InputHandler;
  * This drives player movement by toggling the exact same {@link InputHandler.Key}
  * instances ({@code up}/{@code down}/{@code left}/{@code right}) that keyboard
  * input already uses, so {@code Player.tick()} doesn't need to know or care
- * whether the movement came from a keyboard or a touchscreen. {@code input.D}
- * (the desktop interact key) is intentionally left untouched here.
+ * whether the movement came from a keyboard or a touchscreen. {@code input.F}
+ * (the interact key) is intentionally left untouched here.
  */
 public final class WebJoystick {
 

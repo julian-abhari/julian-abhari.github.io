@@ -30,7 +30,9 @@ public class InputHandler {
 	public Key left = new Key();
 	public Key right = new Key();
 	// Interact with item or self
-	public Key D = new Key();
+	public Key F = new Key();
+	// Launch Tootie
+	public Key spacebar = new Key();
 
 	private void onKeyDown(KeyboardEvent event) {
 		if (toggleKey(event.getKey(), true)) {
@@ -46,25 +48,30 @@ public class InputHandler {
 
 	public boolean toggleKey(String key, boolean isPressed) {
 		//-----Movement Keys-----
-		if (key.equals("ArrowUp")) {
+		if (key.equals("ArrowUp") || key.equalsIgnoreCase("w")) {
 			up.toggle(isPressed);
 			return true;
 		}
-		if (key.equals("ArrowDown")) {
+		if (key.equals("ArrowDown") || key.equalsIgnoreCase("s")) {
 			down.toggle(isPressed);
 			return true;
 		}
-		if (key.equals("ArrowLeft")) {
+		if (key.equals("ArrowLeft") || key.equalsIgnoreCase("a")) {
 			left.toggle(isPressed);
 			return true;
 		}
-		if (key.equals("ArrowRight")) {
+		if (key.equals("ArrowRight") || key.equalsIgnoreCase("d")) {
 			right.toggle(isPressed);
 			return true;
 		}
 		// Interact with item or self Key
-		if (key.equalsIgnoreCase("d")) {
-			D.toggle(isPressed);
+		if (key.equalsIgnoreCase("f")) {
+			F.toggle(isPressed);
+			return true;
+		}
+		// Launch Tootie
+		if (key.equals(" ")) {
+			spacebar.toggle(isPressed);
 			return true;
 		}
 		return false;

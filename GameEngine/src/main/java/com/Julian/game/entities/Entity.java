@@ -5,7 +5,8 @@ import com.Julian.game.level.Level;
 
 public abstract class Entity {
 
-	public int x, y;
+	public float x, y;
+	public boolean isInteractive = false;
 	protected Level level;
 
 	public Entity(Level level) {

@@ -1,14 +1,23 @@
 package com.Julian.game.gfx;
 
 public class Colors {
+	private int color1;
+	private int color2;
+	private int color3;
+	private int color4;
 
-	public static int get(int color1, int color2, int color3, int color4) { // color1 is darker, then it gets lighter
-																			// from there
-
-		return (get(color4) << 24) + (get(color3) << 16) + (get(color2) << 8) + (get(color1));
+	public Colors(int color1, int color2, int color3, int color4) {
+		this.color1 = color1;
+		this.color2 = color2;
+		this.color3 = color3;
+		this.color4 = color4;
 	}
 
-	private static int get(int color) {
+	public int getColor() { // color1 is darker, then it gets lighter from there
+		return (getColor(color4) << 24) + (getColor(color3) << 16) + (getColor(color2) << 8) + (getColor(color1));
+	}
+
+	private int getColor(int color) {
 		if (0 > color) {
 			return 255;
 		}
@@ -21,4 +30,19 @@ public class Colors {
 		return r * 36 + b * 6 + g;
 	}
 
+	public int getColor1() {
+		return color1;
+	}
+
+	public int getColor2() {
+		return color2;
+	}
+
+	public int getColor3() {
+		return color3;
+	}
+
+	public int getColor4() {
+		return color4;
+	}
 }

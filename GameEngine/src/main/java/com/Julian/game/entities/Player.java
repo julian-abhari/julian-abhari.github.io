@@ -2,194 +2,224 @@ package com.Julian.game.entities;
 
 import com.Julian.game.InputHandler;
 import com.Julian.game.gfx.Colors;
-import com.Julian.game.gfx.Font;
 import com.Julian.game.gfx.Screen;
 import com.Julian.game.level.Level;
-import com.Julian.game.level.tiles.BasicInteractiveTile;
-import com.Julian.game.level.tiles.BasicTriggerTile;
 
 public class Player extends Mob {
 
 	private InputHandler input;
-	private int color = Colors.get(-1, 111, 259, 543);
+	private int defaultColor = new Colors(-1, 142, 441, 544).getColor(); // Light blonde: 441, Reddish Blonde: 431
+	private int playerColor = defaultColor;
 	private int scale = 1;
-	protected boolean isSwimming = false;
-	protected boolean nearInteractive = true;
-	private int tickCount = 0;
-	private String username;
+	private boolean nearInteractive = false;
 
-	public int xFace = 0;
-	public int yFace = 0;
+	private long lastTimeJumped = 0;
+	private int jumpDelay = 750;
+	private int usedLeftMidair = 0;
+	private int usedRightMidair = 0;
 
-	public Player(Level level, int x, int y, InputHandler input, String username) {
-		super(level, "Player", x, y, 1);
+	public Tootie tootie;
+
+	public Player(Level level, int x, int y, InputHandler input) {
+		super(level, "Cailin", x, y, 1);
 		this.input = input;
-		this.username = username;
+		tootie = new Tootie(level, "Tootie", x - 8, y, 1);
+		level.addEntity(tootie);
+	}
+
+	public void render(Screen screen) {
+		int xTile = 2;
+		int yTile = 28;
+		int flipTop = 0;
+		int flipBottom = 0;
+
+		// When the player is facing towards the camera the x place for getting the Tile
+		// pixels increases by 2 (because the player is 2 tiles wide)
+		if (movingDir == 1) {
+			xTile = 2;
+			flipTop = (movingDir - 1) % 2;
+		} else if (movingDir > 1) {
+			xTile = 4;
+			flipTop = (movingDir - 1) % 2;
+			flipBottom = (movingDir - 1) % 2;
+		}
+		if (isInMidair) {
+			xTile = 8;
+		}
+
+		int modifier = 8 * scale;
+		int xOffset = (int) (x - modifier / 2);
+		int yOffset = (int) (y - modifier / 2 - 4);
+
+		screen.render(xOffset + (modifier * flipTop), yOffset, xTile + yTile * 32, playerColor, flipTop == 1, false,
+				scale);
+		screen.render(xOffset + modifier - (modifier * flipTop), yOffset, (xTile + 1) + yTile * 32, playerColor,
+				flipTop == 1, false, scale);
+
+		screen.render(xOffset + (modifier * flipBottom), yOffset + modifier, xTile + (yTile + 1) * 32, playerColor,
+				flipBottom == 1, false, scale);
+		screen.render(xOffset + modifier - (modifier * flipBottom), yOffset + modifier, (xTile + 1) + (yTile + 1) * 32,
+				playerColor, flipBottom == 1, false, scale);
+
+		if (nearInteractive) {
+			screen.render(xOffset - 8, yOffset, 1 + 27 * 32, new Colors(-1, 323, 455, 555).getColor(), 1);
+		}
+
 	}
 
 	// This updates the game, it updates the internal variables and the logic of the
 	// game
 	public void tick() {
-		int xDir = 0;
 		int yDir = 0;
+		int xDir = 0;
 
-		if (input != null) {
-			if (input.up.isPressed()) {
-				yDir -= 1;
-				yFace = -1;
-				xFace = 0;
-			}
-			if (input.down.isPressed()) {
-				yDir += 1;
-				yFace = 1;
-				xFace = 0;
-			}
-			if (input.left.isPressed()) {
-				xDir -= 1;
-				xFace = -1;
-				yFace = 0;
-			}
-			if (input.right.isPressed()) {
-				xDir += 1;
-				xFace = 1;
-				yFace = 0;
-			}
-			// Check if the player is trying to interact with an interactive tile
-			if (input.D.isPressed() && level.getTile((this.x >> 3) + xFace, (this.y >> 3) + yFace).isInteractive()) {
-				((BasicInteractiveTile) level.getTile((this.x >> 3) + xFace, (this.y >> 3) + yFace)).doAction();
+		if (!isInMidair) {
+			usedRightMidair = 0;
+			usedLeftMidair = 0;
+		}
+
+		if (input.up.isPressed() && !isInMidair && System.currentTimeMillis() - jumpDelay > lastTimeJumped) {
+			yDir = -1;
+			applyForce(0, (float) -4.0);
+			lastTimeJumped = System.currentTimeMillis();
+		}
+		if (input.down.isPressed()) {
+			yDir = 1;
+		}
+		if (input.left.isPressed()) {
+			xDir = -1;
+			if (!isInMidair) {
+				applyForce((float) -0.2, 0);
+			} else if ((usedLeftMidair) < 5 && !hasCollided(xDir, yDir)) {
+				applyForce((float) -0.05, 0);
+				usedLeftMidair += 1;
 			}
 		}
-		if (xDir != 0 || yDir != 0) {
+		if (input.right.isPressed()) {
+			xDir = 1;
+			if (!isInMidair) {
+				applyForce((float) 0.2, 0);
+			} else if ((usedRightMidair) < 5 && !hasCollided(xDir, yDir)) {
+				applyForce((float) 0.05, 0);
+				usedRightMidair += 1;
+			}
+		}
+		if (input.spacebar.isPressed()) {
+			tootie.launchMe();
+		}
+
+		applyForce(0, (float) 0.2);
+
+		if (xVelocity != 0 || yVelocity != 0) {
 			move(xDir, yDir);
 			isMoving = true;
 		} else {
 			isMoving = false;
 		}
 
-		// Check if the player is near an interactive tile, if so, then pull up
-		// interacting prompt
-		if (level.getTile((this.x >> 3) + xFace, (this.y >> 3) + yFace).isInteractive()) {
+		// Check if the player is near an interactive entity (NPC), if so, then pull
+		// up the interacting prompt.
+		Entity nearestEntity = level.getNearestEntity(this);
+		double distance = Math.sqrt(Math.pow((nearestEntity.x - this.x), 2) + Math.pow((nearestEntity.y - this.y), 2));
+		if (distance < 20 && nearestEntity.isInteractive) {
 			nearInteractive = true;
-		}
-		// Set nearInteractive to false if the player isn't near an interactive tile
-		// anymore
-		if (!(level.getTile((this.x >> 3) + xFace, (this.y >> 3) + yFace).isInteractive())) {
+			if (input.F.isPressed()) {
+				((NPC) nearestEntity).sayMessage();
+			}
+		} else {
 			nearInteractive = false;
 		}
-
-		// Check if the player is on a trigger tile
-		if (level.getTile(this.x >> 3, this.y >> 3).isTrigger()) {
-			// The tile will be triggered if the player is on it and the tile can be
-			// triggered
-			((BasicTriggerTile) level.getTile(this.x >> 3, this.y >> 3)).doAction();
-		}
-
-		// Check if the player is trying to get in the water
-		if (level.getTile((this.x >> 3), (this.y >> 3)).getId() == 3) {
-			isSwimming = true;
-		}
-		// Check if the player is trying to get out of the water
-		if (isSwimming && level.getTile((this.x >> 3), (this.y >> 3)).getId() != 3) {
-			isSwimming = false;
-		}
-		tickCount += 1;
 	}
 
-	public void render(Screen screen) {
-		int xTile = 0;
-		int yTile = 28;
-		int walkingSpeed = 4;
-		int flipTop = (numSteps >> walkingSpeed) & 1;
-		int flipBottom = (numSteps >> walkingSpeed) & 1;
+	public void applyForce(float xForce, float yForce) {
+		xAcceleration *= 0;
+		yAcceleration *= 0;
 
-		// When the player is facing towards the camera the x place for getting the Tile
-		// pixels increases by 2 (because the player is 2 tiles wide)
-		if (movingDir == 1) {
-			xTile += 2;
-			flipTop = (movingDir - 1) % 2;
-		} else if (movingDir > 1) {
-			xTile += 4 + ((numSteps >> walkingSpeed) & 1) * 2;
-			flipTop = (movingDir - 1) % 2;
-			flipBottom = (movingDir - 1) % 2;
+		xAcceleration += xForce / mass;
+		yAcceleration += yForce / mass;
+
+		xVelocity += xAcceleration;
+		yVelocity += yAcceleration;
+
+		if (xVelocity > 5) {
+			xVelocity = 5;
 		}
-
-		int modifier = 8 * scale;
-		int xOffset = x - modifier / 2;
-		int yOffset = y - modifier / 2 - 4;
-
-		if (isSwimming) {
-			int waterColor = 0;
-			yOffset += 4;
-			if (tickCount % 60 < 15) {
-				waterColor = Colors.get(-1, -1, 225, -1);
-			} else if (tickCount % 60 >= 15 && tickCount % 60 < 30) {
-				yOffset -= 1;
-				waterColor = Colors.get(-1, 225, 115, -1);
-			} else if (tickCount % 60 >= 30 && tickCount % 60 < 45) {
-				waterColor = Colors.get(-1, 115, -1, 225);
-			} else {
-				yOffset -= 1;
-				waterColor = Colors.get(-1, 225, 115, -1);
-			}
-			screen.render(xOffset, yOffset + 3, 0 + 27 * 32, waterColor, 1);
-			screen.render(xOffset + 8, yOffset + 3, 0 + 27 * 32, waterColor, true, false, 1);
+		if (yVelocity > 5) {
+			yVelocity = 5;
 		}
-
-		screen.render(xOffset + (modifier * flipTop), yOffset, xTile + yTile * 32, color, flipTop == 1, false, scale);
-		screen.render(xOffset + modifier - (modifier * flipTop), yOffset, (xTile + 1) + yTile * 32, color, flipTop == 1,
-				false, scale);
-
-		if (!isSwimming) {
-			screen.render(xOffset + (modifier * flipBottom), yOffset + modifier, xTile + (yTile + 1) * 32, color,
-					flipBottom == 1, false, scale);
-			screen.render(xOffset + modifier - (modifier * flipBottom), yOffset + modifier,
-					(xTile + 1) + (yTile + 1) * 32, color, flipBottom == 1, false, scale);
+		if (xVelocity < -5) {
+			xVelocity = -5;
 		}
-
-		if (nearInteractive) {
-			screen.render(xOffset - 8, yOffset, 1 + 27 * 32, Colors.get(-1, 323, 452, 555), 1);
-		}
-
-		if (username != null) {
-			Font.render(username, screen, xOffset - (((username.length() - 1) / 2) * 8), yOffset - 10,
-					Colors.get(-1, -1, -1, 555), 1);
+		if (yVelocity < -5) {
+			yVelocity = -5;
 		}
 	}
 
-	public boolean hasCollided(int xDir, int yDir) {
+	public boolean hasCollided(float xVelDir, float yVelDir) {
 		int xMin = 0;
 		int xMax = 7;
-		int yMin = 0;
+		int yMin = -7;
 		int yMax = 7;
+
 		for (int x = xMin; x < xMax; x += 1) {
-			if (isSolidTile(xDir, yDir, x, yMin)) {
+			if (isSolidTile((int) (xVelDir), (int) (yVelDir), x, yMin)) {
 				return true;
 			}
 		}
 		for (int x = xMin; x < xMax; x += 1) {
-			if (isSolidTile(xDir, yDir, x, yMax)) {
+			if (isSolidTile((int) (xVelDir), (int) (yVelDir), x, yMax)) {
 				return true;
 			}
 		}
 		for (int y = yMin; y < yMax; y += 1) {
-			if (isSolidTile(xDir, yDir, xMin, y)) {
+			if (isSolidTile((int) (xVelDir), (int) (yVelDir), xMin, y)) {
 				return true;
 			}
 		}
 		for (int y = yMin; y < yMax; y += 1) {
-			if (isSolidTile(xDir, yDir, xMax, y)) {
+			if (isSolidTile((int) (xVelDir), (int) (yVelDir), xMax, y)) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	public String getUsername() {
-		return this.username;
+	public boolean hasBounced(float xVelDir, float yVelDir) {
+		int xMin = 0;
+		int xMax = 7;
+		int yMin = -7;
+		int yMax = 7;
+
+		for (int x = xMin; x < xMax; x += 1) {
+			if (isBouncyTile((int) (xVelDir), (int) (yVelDir), x, yMin)) {
+				return true;
+			}
+		}
+		for (int x = xMin; x < xMax; x += 1) {
+			if (isBouncyTile((int) (xVelDir), (int) (yVelDir), x, yMax)) {
+				return true;
+			}
+		}
+		for (int y = yMin; y < yMax; y += 1) {
+			if (isBouncyTile((int) (xVelDir), (int) (yVelDir), xMin, y)) {
+				return true;
+			}
+		}
+		for (int y = yMin; y < yMax; y += 1) {
+			if (isBouncyTile((int) (xVelDir), (int) (yVelDir), xMax, y)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
+	public int getMovingDir() {
+		return movingDir;
+	}
+
+	// Read by WebMain each frame to drive the "press D to interact" HUD via
+	// WebBridge.setNearInteractive(...).
 	public boolean isNearInteractive() {
 		return nearInteractive;
 	}
-
 }

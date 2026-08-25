@@ -46,9 +46,7 @@ public final class WebMain {
 
 	private static final String[] ASSET_PATHS = {
 			"/game/SpriteSheet.png",
-			"/game/Levels/water_test.png",
-			"/game/Levels/cage_test_2.png",
-			"/game/Levels/cage_test_level.png",
+			"/game/Levels/Adventure.png",
 	};
 
 	private static CanvasRenderingContext2D visibleContext;

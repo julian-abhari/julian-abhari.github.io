@@ -6,18 +6,26 @@ import com.Julian.game.level.tiles.Tile;
 public abstract class Mob extends Entity {
 
 	protected String name;
-	protected int speed;
-	protected int numSteps = 0;
 	protected boolean isMoving;
 	protected int movingDir = 1;
 	protected int scale = 1;
+	protected int numSteps = 0;
+	public int mass;
 
-	public Mob(Level level, String name, int x, int y, int speed) {
+	public float xVelocity = 0;
+	public float yVelocity = 0;
+
+	public float xAcceleration = 0;
+	public float yAcceleration = 0;
+
+	public boolean isInMidair = true;
+
+	public Mob(Level level, String name, float x, float y, int mass) {
 		super(level);
 		this.name = name;
 		this.x = x;
 		this.y = y;
-		this.speed = speed;
+		this.mass = mass;
 	}
 
 	// xDir = How much the Mob is moving in a certain direction
@@ -36,33 +44,78 @@ public abstract class Mob extends Entity {
 		if (xDir != 0 && yDir != 0) {
 			move(xDir, 0);
 			move(0, yDir);
-			// The reason why I'm removing one from the 'numSteps' is because it's counting
-			// these two move functions diagonally as 2 steps which is not truer
 			numSteps -= 1;
 			return;
 		}
 		numSteps += 1;
-		if (!hasCollided(xDir, yDir)) {
-			// When the player is going up the movingDir is set to 0
-			if (yDir < 0)
-				movingDir = 0;
-			// When the player is going down the movingDir is set to 1
-			if (yDir > 0)
-				movingDir = 1;
+
+		int xVelDir = 0;
+		int yVelDir = 0;
+
+		if (xVelocity > 0) {
+			xVelDir = 1;
+		}
+		if (xVelocity < 0) {
+			xVelDir = -1;
+		}
+		if (yVelocity > 0) {
+			yVelDir = 1;
+		}
+		if (yVelocity < 0) {
+			yVelDir = -1;
+		}
+
+		if (this.name != "Fireball") {
+			xVelocity *= level.getTile(((int) (this.x) >> 3), ((int) (this.y) >> 3)).getFriction();
+			yVelocity *= level.getTile(((int) (this.x) >> 3), ((int) (this.y) >> 3)).getFriction();
+		}
+
+		if (!hasCollided((int) xVelDir, 0)) {
 			// When the player is moving to the left the movingDir is set to 2
 			if (xDir < 0)
 				movingDir = 2;
 			// When the player is moving to the right the movingDir is set to 3
 			if (xDir > 0)
 				movingDir = 3;
-			// This is moving the players position by whatever the direction is (a value
-			// between one and negative one) multiplied by the speed.
-			x += xDir * speed;
-			y += yDir * speed;
+
+			// This is moving the players position by whatever the direction is when the
+			// acceleration and velocity is added.
+			x += xVelocity;
+		} else {
+			xVelocity = 0;
+			yVelocity *= 0.9;
+		}
+
+		if (hasBounced((int) xVelDir, 0)) {
+			xVelocity *= -1.5;
+		}
+
+		if (!hasCollided(0, (int) yVelDir)) {
+			// When the player is going up the movingDir is set to 0
+			if (yDir < 0)
+				movingDir = 0;
+			// When the player is going down the movingDir is set to 1
+			if (yDir > 0)
+				movingDir = 1;
+			// This is moving the players position by whatever the direction is when the
+			// acceleration and velocity is added.
+			y += yVelocity;
+			isInMidair = true;
+		} else {
+			isInMidair = false;
+			yVelocity = 0;
+			xVelocity *= 0.9;
+		}
+
+		if (hasBounced(0, (int) yVelDir)) {
+			yVelocity *= -1.5;
+			xVelocity *= 1.5;
 		}
 	}
 
-	public abstract boolean hasCollided(int xDir, int yDir);
+	public abstract boolean hasCollided(float xAmount, float yAmount);
+
+	public abstract boolean hasBounced(float xAmount, float yAmount);
 
 	// This is going to get the last tile that the player was standing on and the
 	// current tile and compare them, if the tile hasn't changed then nothing will
@@ -71,9 +124,89 @@ public abstract class Mob extends Entity {
 		if (level == null) {
 			return false;
 		}
-		Tile lastTile = level.getTile((this.x + x) >> 3, (this.y + y) >> 3);
-		Tile newTile = level.getTile((this.x + x + xAmount) >> 3, (this.y + y + yAmount) >> 3);
+
+		Tile lastTile = level.getTile(((int) (this.x + x)) >> 3, ((int) (this.y + y)) >> 3);
+		Tile newTile = level.getTile(((int) (this.x + x + xAmount)) / 8, ((int) (this.y + y + yAmount)) / 8);
+		// If they have collided with a solid tile
 		if (!lastTile.equals(newTile) && newTile.isSolid()) {
+			// If they are moving diagnally into a solid tile
+			if (yAmount > 0 && xAmount > 0) {
+				isSolidTile(xAmount, 0, x, 0);
+				isSolidTile(0, yAmount, 0, y);
+			} else if (yAmount > 0 && xAmount < 0) {
+				isSolidTile(xAmount, 0, x, 0);
+				isSolidTile(0, yAmount, 0, y);
+			} else if (yAmount < 0 && xAmount < 0) {
+				isSolidTile(xAmount, 0, x, 0);
+				isSolidTile(0, yAmount, 0, y);
+			} else if (yAmount < 0 && xAmount > 0) {
+				isSolidTile(xAmount, 0, x, 0);
+				isSolidTile(0, yAmount, 0, y);
+			}
+			// If they are not moving diagnally and have collided into the wall
+			else {
+				if (yAmount != 0) {
+					// The difference between the yMax (the max y from the collision) and the y
+					// (current y value being intercepted) gives the amount to offset by. The
+					// direction of offset is the yAmount's sign.
+					this.y += (y - (yAmount * 7));
+				}
+				if (xAmount < 0) {
+					this.x += x;
+				}
+				if (xAmount > 0) {
+					this.x -= (-x + 7);
+				}
+			}
+
+			return true;
+		}
+		return false;
+	}
+
+	// This is going to get the last tile that the player was standing on and the
+	// current tile and compare them, if the tile hasn't changed then nothing will
+	// happen, but if it has changed and the tile is bouncy then it will return
+	// true.
+	protected boolean isBouncyTile(int xAmount, int yAmount, int x, int y) {
+		if (level == null) {
+			return false;
+		}
+
+		Tile lastTile = level.getTile(((int) (this.x + x)) >> 3, ((int) (this.y + y)) >> 3);
+		Tile newTile = level.getTile(((int) (this.x + x + xAmount)) / 8, ((int) (this.y + y + yAmount)) / 8);
+		// If they have collided with a solid tile
+		if (!lastTile.equals(newTile) && newTile.isBouncy()) {
+			// If they are moving diagnally into a solid tile
+			if (yAmount > 0 && xAmount > 0) {
+				isBouncyTile(xAmount, 0, x, 0);
+				isBouncyTile(0, yAmount, 0, y);
+			} else if (yAmount > 0 && xAmount < 0) {
+				isBouncyTile(xAmount, 0, x, 0);
+				isBouncyTile(0, yAmount, 0, y);
+			} else if (yAmount < 0 && xAmount < 0) {
+				isBouncyTile(xAmount, 0, x, 0);
+				isBouncyTile(0, yAmount, 0, y);
+			} else if (yAmount < 0 && xAmount > 0) {
+				isBouncyTile(xAmount, 0, x, 0);
+				isBouncyTile(0, yAmount, 0, y);
+			}
+			// If they are not moving diagnally and have collided into the wall
+			else {
+				if (yAmount != 0) {
+					// The difference between the yMax (the max y from the collision) and the y
+					// (current y value being intercepted) gives the amount to offset by. The
+					// direction of offset is the yAmount's sign.
+					this.y += (y - (yAmount * 7));
+				}
+				if (xAmount < 0) {
+					this.x += x;
+				}
+				if (xAmount > 0) {
+					this.x -= (-x + 7);
+				}
+			}
+
 			return true;
 		}
 		return false;
@@ -81,30 +214,6 @@ public abstract class Mob extends Entity {
 
 	public String getName() {
 		return name;
-	}
-
-	public int getNumSteps() {
-		return numSteps;
-	}
-
-	public boolean isMoving() {
-		return isMoving;
-	}
-
-	public int getMovingDir() {
-		return movingDir;
-	}
-
-	public void setNumSteps(int numSteps) {
-		this.numSteps = numSteps;
-	}
-
-	public void setMoving(boolean isMoving) {
-		this.isMoving = isMoving;
-	}
-
-	public void setMovingDir(int movingDir) {
-		this.movingDir = movingDir;
 	}
 
 }

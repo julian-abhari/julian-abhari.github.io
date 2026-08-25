@@ -1,5 +1,7 @@
 package com.Julian.game.level.tiles;
 
+import com.Julian.game.gfx.Colors;
+
 public class AnimatedTile extends BasicTile {
 
 	// This is a multidimensional array which holds the coordinates of the tile's
@@ -8,11 +10,11 @@ public class AnimatedTile extends BasicTile {
 	// renders the tile, the id of the tile will change so it will appear to
 	// animate.
 	private int[][] animationTileCoords;
-	private int currentAnimationIndex;
-	private long lastIterationTime;
-	private int animationSwitchDelay;
+	public int currentAnimationIndex;
+	public long lastIterationTime;
+	public int animationSwitchDelay;
 
-	public AnimatedTile(int id, int[][] animationTileCoords, int tileColor, int levelImageColor,
+	public AnimatedTile(int id, int[][] animationTileCoords, Colors tileColor, int levelImageColor,
 			int animationSwitchDelay) {
 		super(id, animationTileCoords[0][0], animationTileCoords[0][1], tileColor, levelImageColor);
 		this.animationTileCoords = animationTileCoords;

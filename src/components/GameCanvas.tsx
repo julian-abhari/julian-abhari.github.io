@@ -190,7 +190,7 @@ export function GameCanvas() {
           data-testid="interact-hud"
           className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-4 py-1.5 text-xs font-medium tracking-wide text-white"
         >
-          {isTouchDevice ? "TAP TO INTERACT" : "PRESS D TO INTERACT"}
+          {isTouchDevice ? "TAP TO INTERACT" : "PRESS F TO INTERACT"}
         </div>
       )}
     </div>

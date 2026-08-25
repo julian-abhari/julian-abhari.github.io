@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.Julian.game.entities.Entity;
+import com.Julian.game.entities.Mob;
 import com.Julian.game.gfx.Screen;
 import com.Julian.game.level.tiles.Tile;
 import com.Julian.game.web.WebAssets;
@@ -20,15 +21,8 @@ public class Level {
 	private String imagePath;
 
 	public Level(String imagePath) {
-		if (imagePath != null) {
-			this.imagePath = imagePath;
-			this.loadLevelFromFile();
-		} else {
-			this.width = 64;
-			this.height = 64;
-			tiles = new byte[width * height];
-			generateLevel();
-		}
+		this.imagePath = imagePath;
+		this.loadLevelFromFile();
 	}
 
 	private void loadLevelFromFile() {
@@ -53,8 +47,6 @@ public class Level {
 					// to load nothing.
 					if (t != null && t.getLevelImageColor() == tileColors[x + y * width]) {
 						this.tiles[x + y * width] = t.getId();
-						t.setXLevel(x);
-						t.setYLevel(y);
 						break tileCheck;
 					}
 				}
@@ -64,19 +56,6 @@ public class Level {
 
 	public void alterTile(int x, int y, Tile newTile) {
 		this.tiles[x + y * width] = newTile.getId();
-	}
-
-	public void generateLevel() {
-		for (int y = 0; y < height; y += 1) {
-			for (int x = 0; x < width; x += 1) {
-				// The index [x + y * width] is used to get the coordinate of the tile.
-				if (x * y % 10 < 7) {
-					tiles[x + y * width] = Tile.GRASS.getId();
-				} else {
-					tiles[x + y * width] = Tile.STONE.getId();
-				}
-			}
-		}
 	}
 
 	public List<Entity> getEntities() {
@@ -146,7 +125,24 @@ public class Level {
 		return Tile.tiles[tiles[x + y * width]];
 	}
 
+	public Entity getNearestEntity(Entity origin) {
+		double minimumDistance = (width + height) * 8;
+		Entity closestEntity = null;
+		for (Entity entity : entities) {
+			double distance = Math.sqrt(Math.pow((entity.x - origin.x), 2) + Math.pow((entity.y - origin.y), 2));
+			if (((Mob) entity).getName() != "Tootie" && entity != origin && distance < minimumDistance) {
+				minimumDistance = distance;
+				closestEntity = entity;
+			}
+		}
+		return closestEntity;
+	}
+
 	public void addEntity(Entity entity) {
 		this.entities.add(entity);
+	}
+
+	public void removeEntity(Entity entity) {
+		this.entities.remove(entity);
 	}
 }
