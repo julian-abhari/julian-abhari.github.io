@@ -66,8 +66,10 @@ public abstract class Mob extends Entity {
 		}
 
 		if (this.name != "Fireball") {
+			// Friction only damps horizontal ground movement now - applying it to
+			// yVelocity too used to eat into fall/jump speed on every tick, which
+			// felt wrong for a platformer (gravity shouldn't be "sticky").
 			xVelocity *= level.getTile(((int) (this.x) >> 3), ((int) (this.y) >> 3)).getFriction();
-			yVelocity *= level.getTile(((int) (this.x) >> 3), ((int) (this.y) >> 3)).getFriction();
 		}
 
 		if (!hasCollided((int) xVelDir, 0)) {
@@ -82,8 +84,9 @@ public abstract class Mob extends Entity {
 			// acceleration and velocity is added.
 			x += xVelocity;
 		} else {
+			// No longer dampens yVelocity here - bumping into a wall sideways used to
+			// cut jump momentum short, which felt bad.
 			xVelocity = 0;
-			yVelocity *= 0.9;
 		}
 
 		if (hasBounced((int) xVelDir, 0)) {

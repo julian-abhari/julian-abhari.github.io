@@ -15,8 +15,6 @@ public class Player extends Mob {
 
 	private long lastTimeJumped = 0;
 	private int jumpDelay = 750;
-	private int usedLeftMidair = 0;
-	private int usedRightMidair = 0;
 
 	public Tootie tootie;
 
@@ -73,14 +71,9 @@ public class Player extends Mob {
 		int yDir = 0;
 		int xDir = 0;
 
-		if (!isInMidair) {
-			usedRightMidair = 0;
-			usedLeftMidair = 0;
-		}
-
 		if (input.up.isPressed() && !isInMidair && System.currentTimeMillis() - jumpDelay > lastTimeJumped) {
 			yDir = -1;
-			applyForce(0, (float) -4.0);
+			applyForce(0, (float) -4.5);
 			lastTimeJumped = System.currentTimeMillis();
 		}
 		if (input.down.isPressed()) {
@@ -89,19 +82,17 @@ public class Player extends Mob {
 		if (input.left.isPressed()) {
 			xDir = -1;
 			if (!isInMidair) {
-				applyForce((float) -0.2, 0);
-			} else if ((usedLeftMidair) < 5 && !hasCollided(xDir, yDir)) {
-				applyForce((float) -0.05, 0);
-				usedLeftMidair += 1;
+				applyForce((float) -0.25, 0);
+			} else {
+				applyForce((float) -0.04, 0);
 			}
 		}
 		if (input.right.isPressed()) {
 			xDir = 1;
 			if (!isInMidair) {
-				applyForce((float) 0.2, 0);
-			} else if ((usedRightMidair) < 5 && !hasCollided(xDir, yDir)) {
-				applyForce((float) 0.05, 0);
-				usedRightMidair += 1;
+				applyForce((float) 0.25, 0);
+			} else {
+				applyForce((float) 0.04, 0);
 			}
 		}
 		if (input.spacebar.isPressed()) {
@@ -120,14 +111,16 @@ public class Player extends Mob {
 		// Check if the player is near an interactive entity (NPC), if so, then pull
 		// up the interacting prompt.
 		Entity nearestEntity = level.getNearestEntity(this);
-		double distance = Math.sqrt(Math.pow((nearestEntity.x - this.x), 2) + Math.pow((nearestEntity.y - this.y), 2));
-		if (distance < 20 && nearestEntity.isInteractive) {
-			nearInteractive = true;
-			if (input.F.isPressed()) {
-				((NPC) nearestEntity).sayMessage();
+		if (nearestEntity != null) {
+			double distance = Math.sqrt(Math.pow((nearestEntity.x - this.x), 2) + Math.pow((nearestEntity.y - this.y), 2));
+			if (distance < 20 && nearestEntity.isInteractive) {
+				nearInteractive = true;
+				if (input.F.isPressed()) {
+					((NPC) nearestEntity).sayMessage();
+				}
+			} else {
+				nearInteractive = false;
 			}
-		} else {
-			nearInteractive = false;
 		}
 	}
 
@@ -217,7 +210,7 @@ public class Player extends Mob {
 		return movingDir;
 	}
 
-	// Read by WebMain each frame to drive the "press D to interact" HUD via
+	// Read by WebMain each frame to drive the "press F to interact" HUD via
 	// WebBridge.setNearInteractive(...).
 	public boolean isNearInteractive() {
 		return nearInteractive;

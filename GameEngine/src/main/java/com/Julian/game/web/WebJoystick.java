@@ -1,5 +1,6 @@
 package com.Julian.game.web;
 
+import org.teavm.jso.browser.Window;
 import org.teavm.jso.canvas.CanvasRenderingContext2D;
 import org.teavm.jso.core.JSArrayReader;
 import org.teavm.jso.dom.events.EventListener;
@@ -16,18 +17,27 @@ import com.Julian.game.InputHandler;
  * Tapping anywhere on the visible canvas spawns a joystick centered at the tap
  * position; dragging the thumb away from that origin moves the player in that
  * direction (both axes independently, so diagonal movement works). Lifting the
- * finger stops movement and removes the joystick.
+ * finger stops movement and removes the joystick. A short tap that never drags
+ * past the deadzone is instead treated as an interact press - the touch
+ * equivalent of the {@code F} key - so mobile players can trigger NPC dialogue
+ * the same way desktop players do.
  *
  * This drives player movement by toggling the exact same {@link InputHandler.Key}
  * instances ({@code up}/{@code down}/{@code left}/{@code right}) that keyboard
  * input already uses, so {@code Player.tick()} doesn't need to know or care
- * whether the movement came from a keyboard or a touchscreen. {@code input.F}
- * (the interact key) is intentionally left untouched here.
+ * whether the movement came from a keyboard or a touchscreen.
  */
 public final class WebJoystick {
 
 	private static final double MAX_RADIUS = 40;
 	private static final double DEADZONE = 11;
+
+	// A touch that ends without dragging past the deadzone, within this long,
+	// counts as a tap (interact) rather than an aborted drag.
+	private static final int TAP_MAX_DURATION_MS = 300;
+	// How long to hold input.F "pressed" after a tap, giving Player.tick() at
+	// least one frame to observe it - the same way a real keypress would.
+	private static final int TAP_RELEASE_DELAY_MS = 100;
 
 	private static final String BASE_FILL_STYLE = "rgba(255,255,255,0.25)";
 	private static final String THUMB_FILL_STYLE = "rgba(255,255,255,0.5)";
@@ -43,6 +53,7 @@ public final class WebJoystick {
 	private double originY;
 	private double thumbX;
 	private double thumbY;
+	private long touchStartTime;
 
 	public WebJoystick(HTMLCanvasElement canvas, InputHandler input) {
 		this.canvas = canvas;
@@ -73,6 +84,7 @@ public final class WebJoystick {
 		originY = local[1];
 		thumbX = originX;
 		thumbY = originY;
+		touchStartTime = System.currentTimeMillis();
 	}
 
 	private void onTouchMove(TouchEvent event) {
@@ -118,7 +130,25 @@ public final class WebJoystick {
 			return;
 		}
 		event.preventDefault();
+
+		double deltaX = thumbX - originX;
+		double deltaY = thumbY - originY;
+		boolean wasTap = Math.sqrt(deltaX * deltaX + deltaY * deltaY) <= DEADZONE
+				&& (System.currentTimeMillis() - touchStartTime) <= TAP_MAX_DURATION_MS;
+
 		reset();
+
+		if (wasTap) {
+			triggerInteract();
+		}
+	}
+
+	// Presses (and shortly after releases) the interact key, the same way a
+	// real F keypress would - Player.tick() only checks input.F.isPressed()
+	// once per frame, so this needs to stay "pressed" for at least one frame.
+	private void triggerInteract() {
+		input.F.toggle(true);
+		Window.setTimeout(() -> input.F.toggle(false), TAP_RELEASE_DELAY_MS);
 	}
 
 	private void reset() {
