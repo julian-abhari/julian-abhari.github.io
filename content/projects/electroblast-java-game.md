@@ -15,4 +15,4 @@ links: []
 media: []
 ---
 
-Developed a from-scratch game engine controlling everything from the graphics to the physics. First entry in the game-engine lineage that continues through [[a-short-adventure-java-game]], [[airlectric-drifter-multiplayer-java-game]], [[basic-craft-multiplayer-java-game]], and [[cailins-adventure-2d-physics-game]].
+Developed a from-scratch game engine controlling everything from the graphics to the physics. First entry in the game-engine lineage that continues through [[a-short-adventure-java-game]], [[airlectric-drifter-multiplayer-java-game]], and [[basic-craft-multiplayer-java-game]].

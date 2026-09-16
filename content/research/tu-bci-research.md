@@ -4,10 +4,10 @@ category: research
 title: "Brain-Computer Interface Machine Learning Inference Research"
 organization: "The University of Tulsa, Tandy School of Computer Science"
 startDate: 2020-09
-endDate: 2021-05
+endDate: 2022-05
 location: "Tulsa, OK"
 tags: ["machine-learning", "tensorflow", "pytorch", "neuroscience", "cnn"]
-summary: "Developed ML models (CNNs, Random Forests, KNN) to predict hand movement from motor cortex signals as part of a university BCI research group."
+summary: "Developed ML models (CNNs, Random Forests, KNN) to predict hand movement from motor cortex signals as part of a university BCI research group, continuing through 2022."
 featured: false
 institution: "The University of Tulsa"
 links: []
