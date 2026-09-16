@@ -129,7 +129,7 @@ public abstract class Mob extends Entity {
 		}
 
 		Tile lastTile = level.getTile(((int) (this.x + x)) >> 3, ((int) (this.y + y)) >> 3);
-		Tile newTile = level.getTile(((int) (this.x + x + xAmount)) / 8, ((int) (this.y + y + yAmount)) / 8);
+		Tile newTile = level.getTile(((int) (this.x + x + xAmount)) >> 3, ((int) (this.y + y + yAmount)) >> 3);
 		// If they have collided with a solid tile
 		if (!lastTile.equals(newTile) && newTile.isSolid()) {
 			// If they are moving diagnally into a solid tile
