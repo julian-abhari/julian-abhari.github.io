@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "predev": "npm run generate:content",
     "build": "next build",
+    "prebuild": "npm run generate:content",
     "start": "next start",
     "lint": "eslint",
+    "generate:content": "tsx scripts/generate-content.ts",
     "engine:build": "cd GameEngine && ./gradlew buildWasmGC && mkdir -p ../public/game/Levels && cp build/generated/teavm/wasm-gc/game.wasm build/generated/teavm/wasm-gc/game.wasm-runtime.js ../public/game/ && cp src/main/resources/SpriteSheet.png ../public/game/SpriteSheet.png && cp src/main/resources/Levels/*.png ../public/game/Levels/",
     "deploy": "gh-pages -d out --dotfiles"
   },
@@ -23,7 +26,11 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "gh-pages": "^6.3.0",
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.13",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.13",
+    "typescript": "^5",
+    "zod": "^4.6.5"
   }
 }
