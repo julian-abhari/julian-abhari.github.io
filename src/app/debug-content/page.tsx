@@ -6,7 +6,7 @@ import { DebugContentBrowser } from "./DebugContentBrowser";
 // once the real in-world exhibit interaction UI lands.
 export default function DebugContentPage() {
   return (
-    <div className="min-h-dvh bg-neutral-950 p-8 text-neutral-100">
+    <div className="h-dvh overflow-y-auto bg-neutral-950 p-8 text-neutral-100">
       <h1 className="text-2xl font-bold">Content Debug</h1>
       <p className="mt-1 text-sm opacity-70">
         Every entry from every category, generated at build time from{" "}

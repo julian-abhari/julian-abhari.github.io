@@ -1,12 +1,12 @@
 ---
 id: electroblast-java-game
 category: projects
-title: "Electroblast: Java Game"
+title: "Electroblast"
 organization: null
 startDate: 2019-01
-endDate: 2019-12
+endDate: 2019-03
 tags: ["java", "game-engine"]
-summary: "First from-scratch Java game engine, controlling everything from graphics to physics — the start of a game-engine lineage."
+summary: "A prototype game thrown together over spring break on top of my game engine's new physics engine."
 featured: false
 techStack: ["java"]
 repoUrl: null
@@ -15,4 +15,4 @@ links: []
 media: []
 ---
 
-Developed a from-scratch game engine controlling everything from the graphics to the physics. First entry in the game-engine lineage that continues through [[a-short-adventure-java-game]], [[airlectric-drifter-multiplayer-java-game]], and [[basic-craft-multiplayer-java-game]].
+During my junior year, I began adding a physics engine to my game engine, and I was having a lot of fun with it. Once spring break came around though, I had an idea for a fun way to play a game, and quickly threw together a fun little game. The game was really a prototype, as I wanted to experiment and make it much more interesting.

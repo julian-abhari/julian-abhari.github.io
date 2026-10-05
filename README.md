@@ -34,6 +34,7 @@ The lab's exhibits *are* the portfolio — its research logs, achievements, and 
 - **Experience**
   - Work
   - Research
+  - Projects
 - **Education**
 - **Publications**
 - **Patents**
@@ -54,11 +55,28 @@ When the viewer nears an interactible object, it highlights automatically and a 
 
 ## Local Development
 
+### First-time setup
+
 ```bash
-npm run dev            # start the Next.js dev server at localhost:3000
-npm run engine:build   # rebuild the Java engine (Gradle -> TeaVM -> wasm) and
-                        # copy game.wasm / game.wasm-runtime.js into public/game/
+npm ci                 # install JS dependencies (needs Node 20+; JDK 21+ for the engine)
+npm run engine:build   # build the Java engine into public/game/ (gitignored, so a
+                        # fresh clone has no engine until this runs)
 ```
+
+### Day to day
+
+```bash
+npm run dev               # start the Next.js dev server at localhost:3000
+                           # (automatically runs generate:content first)
+npm run generate:content  # re-parse + validate content/ and regenerate src/generated/content.ts
+npm run engine:build      # rebuild the Java engine (Gradle -> TeaVM -> wasm) and
+                           # copy game.wasm / game.wasm-runtime.js into public/game/
+```
+
+Open `http://localhost:3000/debug-content` to browse every content entry and preview it
+in the content panel (temporary route, to be removed once the in-world exhibits exist).
+
+### Engine workflow
 
 The wasm output is a static asset, not part of Next.js's module graph — Next's dev
 server serves everything under `public/` straight from disk, but it does **not**
@@ -67,6 +85,21 @@ watch or rebuild the Java side. The loop when working on the engine is:
 1. Edit Java under `GameEngine/src/main/java/com/Julian/game/...`
 2. `npm run engine:build`
 3. Reload the browser tab (a real reload — the wasm module is re-fetched, not hot-reloaded)
+
+### Content workflow
+
+Portfolio entries live in `content/<category>/<id>.md` (markdown with YAML frontmatter),
+with the allowed tag vocabulary in `content/tags.json`. See
+`plans/world-content-and-cataloguing-plan.md` for the schema.
+
+1. Add or edit a file under `content/`.
+2. `npm run generate:content` — validates every entry (required fields, `id` matches
+   filename, category matches folder, tags exist in `tags.json`, `[[entry-id]]`
+   cross-links resolve, ids are unique) and fails with a per-file error report if
+   anything is wrong. On success it writes `src/generated/content.ts` (gitignored).
+3. Reload the browser tab. Editing `content/` while `next dev` is running does **not**
+   hot-reload; step 2 is needed each time (`npm run dev` and `npm run build` run it
+   automatically on start).
 
 ## Deployment
 
@@ -79,9 +112,9 @@ root — there's no subpath the way a project page gets
 with no `basePath`/`assetPrefix`.
 
 Because GitHub Pages only serves static files (no Node server, no API routes),
-"deploying" means: compile the Java engine, statically export the Next.js app,
-and publish the result. Whether that's run by hand or by a CI system, the steps
-are the same:
+"deploying" means: validate and compile the content, compile the Java engine,
+statically export the Next.js app, and publish the result. Whether that's run by
+hand or by a CI system, the steps are the same:
 
 1. **Checkout the repo.**
 2. **Set up a JDK** (21+ — whatever `java -version` reports locally) and **Node**
@@ -92,21 +125,35 @@ are the same:
    `./gradlew buildWasmGC` and copies `game.wasm` + `game.wasm-runtime.js` into
    `public/game/`. This must happen *before* the Next.js build, since static
    export just copies whatever is in `public/` verbatim.
-5. **Static export:** `npm run build` — with `output: "export"` in
-   `next.config.ts`, this produces a fully static site in `out/` (verified:
-   `out/index.html`, `out/_next/`, `out/game/game.wasm`, and `out/.nojekyll`
-   all land correctly).
-6. **Publish `out/`.** GitHub Pages needs a branch to serve from, configured in
-   the repo's Settings → Pages. Recommended split: keep source on `main`, and
-   publish only the built `out/` contents to a `gh-pages` branch (so build
-   artifacts never mix with source history). The standard tool for this is the
+5. **Static export:** `npm run build` — first runs `generate:content` via the
+   `prebuild` hook (a content validation error fails the build here, before
+   anything is published), then with `output: "export"` in `next.config.ts`
+   produces a fully static site in `out/` (verified: `out/index.html`,
+   `out/_next/`, `out/game/game.wasm`, and `out/.nojekyll` all land correctly).
+6. **Publish source:** commit and push to `master` so the repo history matches
+   what's live:
+   ```bash
+   git add <changed files>
+   git commit -m "..."
+   git push origin master
+   ```
+7. **Publish `out/`.** GitHub Pages serves from a branch configured in the repo's
+   Settings → Pages. Source lives on `master`, and only the built `out/` contents
+   are published to a `gh-pages` branch (so build artifacts never mix with source
+   history). The standard tool for this is the
    [`gh-pages`](https://www.npmjs.com/package/gh-pages) package (installed as a
    devDependency):
    ```bash
    npm run deploy
    ```
    then point GitHub Pages (Settings → Pages → Source) at the `gh-pages` branch,
-   root.
+   root. The site updates a few minutes after the deploy finishes.
+
+Quick version for a normal release, after committing your changes:
+
+```bash
+npm run engine:build && npm run build && git push origin master && npm run deploy
+```
 
    `public/.nojekyll` (and therefore `out/.nojekyll`) exists specifically so
    GitHub Pages' default Jekyll processing doesn't strip Next.js's `_next/`
@@ -114,8 +161,8 @@ are the same:
    told not to.
 
 No GitHub Actions workflow exists for this yet — the above is run manually for
-now. If/when it's worth automating, a workflow would just wire these same six
-steps to run on push to `main` (`actions/setup-java` + `actions/setup-node` +
+now. If/when it's worth automating, a workflow would just wire these same steps
+to run on push to `master` (`actions/setup-java` + `actions/setup-node` +
 the commands above + `peaceiris/actions-gh-pages` or
 `actions/deploy-pages`).
 
@@ -125,6 +172,7 @@ the commands above + `peaceiris/actions-gh-pages` or
 - [x] Prove the TeaVM -> WebAssembly (wasmGC) pipeline with a minimal demo
 - [x] Port the real Java Game Engine (rendering, input, resource loading) to the browser and embed it in Next.js
 - [x] Build core movement + interaction system (mobile joystick, desktop keyboard/cursor)
+- [x] Catalogue real portfolio content in `content/` and build the validated content pipeline + generic content panel
 - [ ] Design lab environment and exhibit-to-content mapping
 - [ ] Populate exhibits with real portfolio content (experience, education, publications, patents, awards)
 - [ ] Cross-device polish pass

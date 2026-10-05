@@ -39,7 +39,7 @@ export function DebugContentBrowser({ entriesByCategory }: Props) {
         )}
       </div>
 
-      <div>
+      <div className="lg:sticky lg:top-0 lg:max-h-[calc(100dvh-4rem)] lg:self-start lg:overflow-y-auto">
         {selectedId ? (
           <ContentPanel key={selectedId} entryId={selectedId} onClose={() => setSelectedId(null)} />
         ) : (
